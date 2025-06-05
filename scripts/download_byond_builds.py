@@ -26,6 +26,15 @@ BASE_URLS = {
 # Define the regex pattern to match executable files
 FILE_PATTERN = r'\d+\.\d+_byond\.exe'
 
+# Add improved headers to bypass 403 errors
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+    'Accept-Language': 'en-US,en;q=0.5',
+    'Referer': 'https://www.byond.com/',
+    'Alt-Used': 'www.byond.com'
+}
+
 def get_available_builds(version):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
@@ -34,8 +43,8 @@ def get_available_builds(version):
         return []
     
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0'}
-        response = requests.get(url, headers=headers)
+        # Updated: use global HEADERS now
+        response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -56,8 +65,8 @@ def get_available_builds(version):
 def download_file(url, target_path):
     """Download a file from URL to target path"""
     try:
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0'}
-        response = requests.get(url, stream=True, headers=headers)
+        # Updated: use global HEADERS now
+        response = requests.get(url, stream=True, headers=HEADERS)
         response.raise_for_status()
         
         # Ensure directory exists
