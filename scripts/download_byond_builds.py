@@ -34,7 +34,8 @@ def get_available_builds(version):
         return []
     
     try:
-        response = requests.get(url)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0'}
+        response = requests.get(url, headers=headers)
         response.raise_for_status()
         
         soup = BeautifulSoup(response.text, 'html.parser')
@@ -55,7 +56,8 @@ def get_available_builds(version):
 def download_file(url, target_path):
     """Download a file from URL to target path"""
     try:
-        response = requests.get(url, stream=True)
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0'}
+        response = requests.get(url, stream=True, headers=headers)
         response.raise_for_status()
         
         # Ensure directory exists
