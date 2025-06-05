@@ -103,7 +103,6 @@
             async function fetchFiles(version) {
                 try {
                     // This will only work when hosted on GitHub Pages
-                    // Locally, you'd need a different approach due to CORS
                     const response = await fetch(`/byond-builds/${version}/`);
 
                     if (!response.ok) {
@@ -142,7 +141,7 @@
                     links.forEach(link => {
                         const li = document.createElement('li');
                         const a = document.createElement('a');
-                        a.href = `/${version}/${link.name}`;
+                        a.href = `/byond-builds/${version}/${link.name}`;
                         a.textContent = link.name;
                         li.appendChild(a);
                         listElement.appendChild(li);
