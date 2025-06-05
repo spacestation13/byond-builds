@@ -5,6 +5,8 @@ import logging
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Set up logging
 logging.basicConfig(
@@ -38,6 +40,9 @@ def get_available_builds(version):
         options.add_argument('--headless')
         browser = webdriver.Chrome(options=options)
         browser.get(url)
+        
+        # Wait for anchors to appear
+        WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
         
         links = browser.find_elements(By.TAG_NAME, "a")
         files = []
