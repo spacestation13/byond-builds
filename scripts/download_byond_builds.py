@@ -1,10 +1,10 @@
 import os
 import re
-import requests
-from bs4 import BeautifulSoup
 import time
 import logging
 from pathlib import Path
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 # Set up logging
 logging.basicConfig(
@@ -26,15 +26,6 @@ BASE_URLS = {
 # Define the regex pattern to match executable files
 FILE_PATTERN = r'\d+\.\d+_byond\.exe'
 
-# Add improved headers to bypass 403 errors
-HEADERS = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Referer': 'https://www.byond.com/',
-    'Alt-Used': 'www.byond.com'
-}
-
 def get_available_builds(version):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
@@ -43,62 +34,41 @@ def get_available_builds(version):
         return []
     
     try:
-        response = requests.get(url, headers=HEADERS)
-        response.raise_for_status()
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        browser = webdriver.Chrome(options=options)
+        browser.get(url)
         
-        soup = BeautifulSoup(response.text, 'html.parser')
+        links = browser.find_elements(By.TAG_NAME, "a")
         files = []
-        
-        # Parse the links
-        for link in soup.find_all('a'):
-            href = link.get('href')
+        for link in links:
             file_name = link.text.strip()
-            if href and re.search(f"{version}\\.\\d+_byond\\.exe", file_name):
+            if re.search(f"{version}\\.\\d+_byond\\.exe", file_name):
                 files.append(file_name)
-                
+        browser.quit()
         return files
-    except requests.exceptions.HTTPError as http_err:
-        if response.status_code == 403:
-            logger.warning("Received 403, retrying with updated headers.")
-            fallback_headers = dict(HEADERS)
-            fallback_headers["User-Agent"] = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
-            response = requests.get(url, headers=fallback_headers)
-            response.raise_for_status()
-            
-            soup = BeautifulSoup(response.text, 'html.parser')
-            files = []
-            
-            # Parse the links
-            for link in soup.find_all('a'):
-                href = link.get('href')
-                file_name = link.text.strip()
-                if href and re.search(f"{version}\\.\\d+_byond\\.exe", file_name):
-                    files.append(file_name)
-                    
-            return files
-        else:
-            logger.error(f"HTTP Error: {http_err}")
-            return []
     except Exception as e:
         logger.error(f"Error fetching build list for version {version}: {str(e)}")
         return []
 
 def download_file(url, target_path):
-    """Download a file from URL to target path"""
+    logger.info(f"Downloading via Selenium: {url}")
     try:
-        # Updated: use global HEADERS now
-        response = requests.get(url, stream=True, headers=HEADERS)
-        response.raise_for_status()
+        options = webdriver.ChromeOptions()
+        options.add_argument('--headless')
+        prefs = {
+            "download.default_directory": str(os.path.dirname(target_path)),
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True
+        }
+        options.add_experimental_option("prefs", prefs)
+        browser = webdriver.Chrome(options=options)
+        browser.get(url)
         
-        # Ensure directory exists
-        os.makedirs(os.path.dirname(target_path), exist_ok=True)
-        
-        # Write file
-        with open(target_path, 'wb') as f:
-            for chunk in response.iter_content(chunk_size=8192):
-                f.write(chunk)
-                
-        logger.info(f"Successfully downloaded {url} to {target_path}")
+        # Wait briefly for download to complete
+        time.sleep(5)
+        browser.quit()
+        logger.info(f"Downloaded {url} to {target_path}")
         return True
     except Exception as e:
         logger.error(f"Error downloading {url}: {str(e)}")
