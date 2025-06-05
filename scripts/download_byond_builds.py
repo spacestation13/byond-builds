@@ -106,16 +106,36 @@ def download_file(url, target_path, manual_pause=False, timeout=120):
         logger.error(f"Error downloading {url}: {str(e)}")
         return False
 
+def generate_version_index(version_dir: Path):
+    """Generate a static index.html for a version directory listing all .exe files."""
+    files = sorted(f for f in version_dir.glob("*_byond.exe"))
+    html = [
+        "<!DOCTYPE html>",
+        "<html lang='en'>",
+        "<head>",
+        "    <meta charset='UTF-8'>",
+        f"    <title>BYOND Builds for {version_dir.name}</title>",
+        "    <style>body{font-family:sans-serif;max-width:600px;margin:2em auto;}h1{font-size:1.5em;}ul{padding:0;}li{margin:8px 0;list-style:none;}a{color:#0366d6;text-decoration:none;}a:hover{text-decoration:underline;}</style>",
+        "</head>",
+        "<body>",
+        f"    <h1>BYOND Builds for {version_dir.name}</h1>",
+        "    <ul>"
+    ]
+    for f in files:
+        html.append(f"        <li><a href='{f.name}'>{f.name}</a></li>")
+    html.append("    </ul>")
+    html.append("    <p style='font-size:0.9em;color:#666;margin-top:2em;'>This is a static listing generated automatically. Return to <a href='../index.html'>main mirror page</a>.</p>")
+    html.append("</body>\n</html>")
+    (version_dir / "index.html").write_text("\n".join(html), encoding="utf-8")
+
 def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
     output_dir.mkdir(exist_ok=True)
-    # Set up a single browser instance for all downloads
     import tempfile
     import shutil
     options = webdriver.ChromeOptions()
     options.add_argument('--safebrowsing-disable-download-protection')
-    # Use a single temp dir for all downloads in this run
     with tempfile.TemporaryDirectory() as tmpdirname:
         prefs = {
             "download.default_directory": tmpdirname,
@@ -143,7 +163,6 @@ def download_builds(manual_pause=False):
                     url = f"{BASE_URLS[version]}{file_name}"
                     target_path = str(version_dir / file_name)
                     logger.info(f"Downloading {url} to {target_path}")
-                    # Open a new tab for each download
                     browser.execute_script("window.open('about:blank', '_blank');")
                     browser.switch_to.window(browser.window_handles[-1])
                     browser.get(url)
@@ -152,29 +171,26 @@ def download_builds(manual_pause=False):
                     file_path = os.path.join(tmpdirname, file_name)
                     crdownload_path = file_path + ".crdownload"
                     start_time = time.time()
-                    # Wait for download to start
                     while not os.path.exists(file_path) and not os.path.exists(crdownload_path):
                         if time.time() - start_time > 120:
                             logger.error(f"Timeout waiting for download to start: {file_name}")
                             break
                         time.sleep(0.1)
-                    # Wait for download to finish
                     while os.path.exists(crdownload_path):
                         if time.time() - start_time > 120:
                             logger.error(f"Timeout waiting for download to finish: {file_name}")
                             break
                         time.sleep(0.2)
-                    # Close the tab
                     browser.close()
                     browser.switch_to.window(browser.window_handles[0])
-                    # Move file to target_path
                     if os.path.exists(file_path):
                         shutil.move(file_path, target_path)
                         logger.info(f"Successfully downloaded {file_name}")
                     else:
                         logger.error(f"Failed to download {file_name}")
-                    # Be nice to the server
                     time.sleep(1.5)
+                # Generate static index.html for this version
+                generate_version_index(version_dir)
         finally:
             browser.quit()
 
