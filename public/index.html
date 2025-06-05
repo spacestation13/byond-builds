@@ -104,7 +104,7 @@
                 try {
                     // This will only work when hosted on GitHub Pages
                     // Locally, you'd need a different approach due to CORS
-                    const response = await fetch(`/${version}/`);
+                    const response = await fetch(`/byond-builds/${version}/`);
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
