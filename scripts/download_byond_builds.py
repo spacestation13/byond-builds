@@ -43,7 +43,6 @@ def get_available_builds(version):
         return []
     
     try:
-        # Updated: use global HEADERS now
         response = requests.get(url, headers=HEADERS)
         response.raise_for_status()
         
@@ -58,6 +57,28 @@ def get_available_builds(version):
                 files.append(file_name)
                 
         return files
+    except requests.exceptions.HTTPError as http_err:
+        if response.status_code == 403:
+            logger.warning("Received 403, retrying with updated headers.")
+            fallback_headers = dict(HEADERS)
+            fallback_headers["User-Agent"] = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+            response = requests.get(url, headers=fallback_headers)
+            response.raise_for_status()
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            files = []
+            
+            # Parse the links
+            for link in soup.find_all('a'):
+                href = link.get('href')
+                file_name = link.text.strip()
+                if href and re.search(f"{version}\\.\\d+_byond\\.exe", file_name):
+                    files.append(file_name)
+                    
+            return files
+        else:
+            logger.error(f"HTTP Error: {http_err}")
+            return []
     except Exception as e:
         logger.error(f"Error fetching build list for version {version}: {str(e)}")
         return []
