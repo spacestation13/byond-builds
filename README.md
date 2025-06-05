@@ -28,7 +28,7 @@ https://spacestation13.github.io/byond-builds/515/515.1647_byond.exe
 
 ## How It Works
 
-A GitHub Actions workflow runs daily to:
+A script is run manually to:
 
 1. Check the official BYOND website for new builds
 2. Download any new build files that are not already mirrored

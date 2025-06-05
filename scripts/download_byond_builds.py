@@ -2,6 +2,9 @@ import os
 import re
 import time
 import logging
+import argparse
+import tempfile
+import shutil
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -28,22 +31,20 @@ BASE_URLS = {
 # Define the regex pattern to match executable files
 FILE_PATTERN = r'\d+\.\d+_byond\.exe'
 
-def get_available_builds(version):
+def get_available_builds(version, manual_pause=False):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
     if not url:
         logger.error(f"Unknown version: {version}")
         return []
-    
     try:
         options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
         browser = webdriver.Chrome(options=options)
         browser.get(url)
-        
+        if manual_pause:
+            input(f"\n[Manual Step] Please solve any CAPTCHAs or Cloudflare challenges in the browser window, then press Enter to continue...")
         # Wait for anchors to appear
         WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
-        
         links = browser.find_elements(By.TAG_NAME, "a")
         files = []
         for link in links:
@@ -56,65 +57,131 @@ def get_available_builds(version):
         logger.error(f"Error fetching build list for version {version}: {str(e)}")
         return []
 
-def download_file(url, target_path):
+def download_file(url, target_path, manual_pause=False, timeout=120):
     logger.info(f"Downloading via Selenium: {url}")
     try:
-        options = webdriver.ChromeOptions()
-        options.add_argument('--headless')
-        prefs = {
-            "download.default_directory": str(os.path.dirname(target_path)),
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True
-        }
-        options.add_experimental_option("prefs", prefs)
-        browser = webdriver.Chrome(options=options)
-        browser.get(url)
-        
-        # Wait briefly for download to complete
-        time.sleep(5)
-        browser.quit()
-        logger.info(f"Downloaded {url} to {target_path}")
-        return True
+        # Use a unique temp directory for this download
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            options = webdriver.ChromeOptions()
+            options.add_argument('--safebrowsing-disable-download-protection')
+            prefs = {
+                "download.default_directory": tmpdirname,
+                "download.prompt_for_download": False,
+                "download.directory_upgrade": True,
+                "safebrowsing.enabled": True
+            }
+            options.add_experimental_option("prefs", prefs)
+            browser = webdriver.Chrome(options=options)
+            file_name = os.path.basename(target_path)
+            browser.get(url)
+            if manual_pause:
+                input(f"\n[Manual Step] Please solve any CAPTCHAs or Cloudflare challenges in the browser window, then press Enter to continue...")
+            start_time = time.time()
+            final_path = os.path.join(tmpdirname, file_name)
+            crdownload_path = final_path + ".crdownload"
+            # Wait for download to start
+            while not os.path.exists(final_path) and not os.path.exists(crdownload_path):
+                if time.time() - start_time > timeout:
+                    logger.error(f"Timeout waiting for download to start: {file_name}")
+                    browser.quit()
+                    return False
+                time.sleep(0.1)
+            # Wait for download to finish
+            while os.path.exists(crdownload_path):
+                if time.time() - start_time > timeout:
+                    logger.error(f"Timeout waiting for download to finish: {file_name}")
+                    browser.quit()
+                    return False
+                time.sleep(0.2)
+            browser.quit()
+            # Move file to target_path
+            if os.path.exists(final_path):
+                shutil.move(final_path, target_path)
+                logger.info(f"Downloaded {url} to {target_path}")
+                return True
+            else:
+                logger.error(f"Download failed or file not found: {final_path}")
+                return False
     except Exception as e:
         logger.error(f"Error downloading {url}: {str(e)}")
         return False
 
-def download_builds():
+def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
     output_dir.mkdir(exist_ok=True)
-    
-    for version in BASE_URLS:
-        version_dir = output_dir / version
-        version_dir.mkdir(exist_ok=True)
-        
-        # Track existing files to avoid re-downloading
-        existing_files = set(f.name for f in version_dir.glob("*"))
-        logger.info(f"Found {len(existing_files)} existing files in {version_dir}")
-        
-        builds = get_available_builds(version)
-        logger.info(f"Found {len(builds)} builds available for version {version}")
-          # Download new files
-        for file_name in builds:
-            if file_name in existing_files:
-                logger.info(f"File {file_name} already exists, skipping")
-                continue
-                
-            url = f"{BASE_URLS[version]}{file_name}"
-            target_path = str(version_dir / file_name)
-            
-            logger.info(f"Downloading {url} to {target_path}")
-            success = download_file(url, target_path)
-            
-            if success:
-                logger.info(f"Successfully downloaded {file_name}")
-            else:
-                logger.error(f"Failed to download {file_name}")
-                
-            # Be nice to the server
-            time.sleep(1)
+    # Set up a single browser instance for all downloads
+    import tempfile
+    import shutil
+    options = webdriver.ChromeOptions()
+    options.add_argument('--safebrowsing-disable-download-protection')
+    # Use a single temp dir for all downloads in this run
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        prefs = {
+            "download.default_directory": tmpdirname,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+        }
+        logger.info(f"Using temporary directory for downloads: {tmpdirname}")
+        options.add_experimental_option("prefs", prefs)
+        browser = webdriver.Chrome(options=options)
+        try:
+            for version in BASE_URLS:
+                version_dir = output_dir / version
+                version_dir.mkdir(exist_ok=True)
+                # Track existing files to avoid re-downloading
+                existing_files = set(f.name for f in version_dir.glob("*"))
+                logger.info(f"Found {len(existing_files)} existing files in {version_dir}")
+                builds = get_available_builds(version, manual_pause=manual_pause)
+                logger.info(f"Found {len(builds)} builds available for version {version}")
+                # Download new files
+                for file_name in builds:
+                    if file_name in existing_files:
+                        logger.info(f"File {file_name} already exists, skipping")
+                        continue
+                    url = f"{BASE_URLS[version]}{file_name}"
+                    target_path = str(version_dir / file_name)
+                    logger.info(f"Downloading {url} to {target_path}")
+                    # Open a new tab for each download
+                    browser.execute_script("window.open('about:blank', '_blank');")
+                    browser.switch_to.window(browser.window_handles[-1])
+                    browser.get(url)
+                    if manual_pause:
+                        input(f"\n[Manual Step] Please solve any CAPTCHAs or Cloudflare challenges in the browser window, then press Enter to continue...")
+                    file_path = os.path.join(tmpdirname, file_name)
+                    crdownload_path = file_path + ".crdownload"
+                    start_time = time.time()
+                    # Wait for download to start
+                    while not os.path.exists(file_path) and not os.path.exists(crdownload_path):
+                        if time.time() - start_time > 120:
+                            logger.error(f"Timeout waiting for download to start: {file_name}")
+                            break
+                        time.sleep(0.1)
+                    # Wait for download to finish
+                    while os.path.exists(crdownload_path):
+                        if time.time() - start_time > 120:
+                            logger.error(f"Timeout waiting for download to finish: {file_name}")
+                            break
+                        time.sleep(0.2)
+                    # Close the tab
+                    browser.close()
+                    browser.switch_to.window(browser.window_handles[0])
+                    # Move file to target_path
+                    if os.path.exists(file_path):
+                        shutil.move(file_path, target_path)
+                        logger.info(f"Successfully downloaded {file_name}")
+                    else:
+                        logger.error(f"Failed to download {file_name}")
+                    # Be nice to the server
+                    time.sleep(1.5)
+        finally:
+            browser.quit()
 
 if __name__ == "__main__":
-    logger.info("Starting BYOND builds download")
-    download_builds()
+    parser = argparse.ArgumentParser(description="Download BYOND builds locally.")
+    parser.add_argument('--manual-pause', action='store_true', help='Pause after opening browser for manual CAPTCHA/Cloudflare solving')
+    args = parser.parse_args()
+    logger.info("Starting BYOND builds download (local mode)")
+    download_builds(manual_pause=args.manual_pause)
     logger.info("Finished BYOND builds download")
