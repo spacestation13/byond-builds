@@ -28,9 +28,6 @@ BASE_URLS = {
     '516': 'https://www.byond.com/download/build/516/'
 }
 
-# Define the regex pattern to match executable files
-FILE_PATTERN = r'\d+\.\d+_byond\.exe'
-
 def get_available_builds(version, manual_pause=False):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
@@ -49,8 +46,12 @@ def get_available_builds(version, manual_pause=False):
         files = []
         for link in links:
             file_name = link.text.strip()
-            if re.search(f"{version}\\.\\d+_byond\\.exe", file_name):
-                files.append(file_name)
+            # Only match the specific file types we want: .exe, byond.zip, and byond_linux.zip
+            if (file_name.endswith('_byond.exe') or
+                file_name.endswith('_byond.zip') or
+                file_name.endswith('_byond_linux.zip')):
+                if re.search(f"{version}\\.\\d+_", file_name):  # Verify it's the right version
+                    files.append(file_name)
         browser.quit()
         return files
     except Exception as e:
@@ -107,8 +108,12 @@ def download_file(url, target_path, manual_pause=False, timeout=120):
         return False
 
 def generate_version_index(version_dir: Path):
-    """Generate a static index.html for a version directory listing all .exe files."""
-    files = sorted(f for f in version_dir.glob("*_byond.exe"))
+    """Generate a static index.html for a version directory listing all downloaded files."""
+    # Find files with our specific patterns
+    files = sorted(f for f in version_dir.iterdir() if
+                   f.name.endswith('_byond.exe') or
+                   f.name.endswith('_byond.zip') or
+                   f.name.endswith('_byond_linux.zip'))
     html = [
         "<!DOCTYPE html>",
         "<html lang='en'>",

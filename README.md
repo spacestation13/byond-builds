@@ -10,7 +10,8 @@ The files are organized by their major version:
 
 ```
 /515/515.XXXX_byond.exe
-/516/516.XXXX_byond.exe
+/515/516.XXXX_byond.zip
+/516/516.YYYY_byond.exe
 ```
 
 ## Accessing the Mirrored Files

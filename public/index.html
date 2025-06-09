@@ -125,7 +125,7 @@
                     const doc = parser.parseFromString(html, 'text/html');
 
                     const links = Array.from(doc.querySelectorAll('a'))
-                        .filter(a => a.href.endsWith('_byond.exe'))
+                        .filter(a => a.href.endsWith('.exe') || a.href.endsWith('.zip'))
                         .map(a => {
                             return {
                                 name: a.textContent,
