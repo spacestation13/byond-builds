@@ -5,6 +5,7 @@ import logging
 import argparse
 import tempfile
 import shutil
+import urllib.request
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -133,12 +134,23 @@ def generate_version_index(version_dir: Path):
     html.append("</body>\n</html>")
     (version_dir / "index.html").write_text("\n".join(html), encoding="utf-8")
 
+def download_version_txt(output_dir: Path):
+    """Download version.txt from BYOND and save to output_dir/version.txt"""
+    url = "https://www.byond.com/download/version.txt"
+    target_path = output_dir / "version.txt"
+    try:
+        logger.info(f"Downloading {url} to {target_path}")
+        with urllib.request.urlopen(url) as response:
+            content = response.read()
+            target_path.write_bytes(content)
+        logger.info("version.txt downloaded successfully")
+    except Exception as e:
+        logger.error(f"Failed to download version.txt: {e}")
+
 def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
     output_dir.mkdir(exist_ok=True)
-    import tempfile
-    import shutil
     options = webdriver.ChromeOptions()
     options.add_argument('--safebrowsing-disable-download-protection')
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -198,6 +210,8 @@ def download_builds(manual_pause=False):
                 generate_version_index(version_dir)
         finally:
             browser.quit()
+    # Download version.txt after builds
+    download_version_txt(output_dir)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download BYOND builds locally.")
