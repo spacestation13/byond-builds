@@ -167,6 +167,8 @@ def download_builds(manual_pause=False):
             for version in BASE_URLS:
                 version_dir = output_dir / version
                 version_dir.mkdir(exist_ok=True)
+                # generate_version_index(version_dir) # just use this here if you're manually downloading files
+
                 # Track existing files to avoid re-downloading
                 existing_files = set(f.name for f in version_dir.glob("*"))
                 logger.info(f"Found {len(existing_files)} existing files in {version_dir}")
