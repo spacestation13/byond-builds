@@ -6,19 +6,22 @@ This repository mirrors the downloadable installers and portable files from the 
 
 ## Mission Statement
 This repository aims to mirror BYOND versions that are relevant to the larger SS13 community. 
-For example, having a link for your players to download the reccomended version of BYOND to play your servers on.
+For example, having a link for your players to download the recommended version of BYOND to play your servers on.
 This repository does not aim to provide an archive of every BYOND version ever.
 
 'BYOND versions that are relevant' is defined as:
 * The current version.txt, denoting the latest `major.minor` version and possibly the latest beta version on the next line.
 * The last 2 stable major versions, including all minor versions.
 * If there is a current beta version, all minor versions.
-* Note: Some BYOND releases lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
 
 Additional versions are not supported due to:
 * GitHub repository size limits.
 * Maintainer overhead.
 * I don't really want to encourage people to use ancient BYOND versions.
+
+The files available are: `XXX.YYYY_byond.exe`, `_byond.zip`, `_byond_linux.zip`.
+
+`_byondexe.zip` and `_byond_setup.zip` are deemed not relevant.
 
 ## Accessing the Mirrored Files
 
@@ -53,6 +56,7 @@ Possible automation of the above will be explored again when BYOND.com is operat
 * The above policies can change at any time, please contact @ZeWaka on Discord if you seek changes.
   * A minimum of one month of notice will be given for any breaking changes.
 * It's common for beta BYOND versions to be completely broken and unable to compile SS13 codebases. This mirror does not differentiate between broken versions in any way.
+* Some BYOND releases lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
  
 For additional warranty and disclaimer information, please see the [LICENSE](./LICENSE).
 
