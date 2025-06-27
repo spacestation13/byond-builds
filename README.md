@@ -53,10 +53,11 @@ Possible automation of the above will be explored again when BYOND.com is operat
 
 * This repository may be force-pushed and squashed to a single commit at any time.
   * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
-* The above policies can change at any time, please contact @ZeWaka on Discord if you seek changes.
-  * A minimum of one month of notice will be given for any breaking changes.
+* A minimum of one month of notice will be given for any breaking changes.
+  * Yes, this includes removing the n-3 BYOND version.
 * It's common for beta BYOND versions to be completely broken and unable to compile SS13 codebases. This mirror does not differentiate between broken versions in any way.
-* Some BYOND releases lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
+* The above policies can change at any time, please contact @ZeWaka on Discord if you seek changes.
+* Some BYOND versions lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
  
 For additional warranty and disclaimer information, please see the [LICENSE](./LICENSE).
 
