@@ -9,7 +9,7 @@ import urllib.request
 from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 # Set up logging
@@ -147,6 +147,58 @@ def download_version_txt(output_dir: Path):
     except Exception as e:
         logger.error(f"Failed to download version.txt: {e}")
 
+def parse_version_from_filename(filename):
+    """Parse major and minor version from a BYOND build filename.
+    
+    Args:
+        filename: Filename like '515.1605_byond.exe'
+        
+    Returns:
+        tuple: (major_version, minor_version) or (None, None) if parsing fails
+    """
+    # Pattern to match: major.minor_byond.exe or major.minor_byond.zip or major.minor_byond_linux.zip
+    pattern = r'(\d+)\.(\d+)_byond(?:\.exe|\.zip|_linux\.zip)'
+    match = re.match(pattern, filename)
+    if match:
+        major_version = match.group(1)
+        minor_version = int(match.group(2))  # Convert to int for comparison
+        return major_version, minor_version
+    return None, None
+
+def copy_latest_build(version_dir: Path, major_version: str):
+    """Copy the latest build file to a _latest.exe file based on minor version number.
+    
+    Args:
+        version_dir: Directory containing the build files
+        major_version: Major version string (e.g., '515')
+    """
+    # Find all build files in the directory
+    build_files = []
+    for file_path in version_dir.iterdir():
+        if file_path.is_file():
+            major, minor = parse_version_from_filename(file_path.name)
+            if major == major_version and minor is not None:
+                build_files.append((file_path, minor))
+    
+    if not build_files:
+        logger.warning(f"No build files found for version {major_version}")
+        return
+    
+    # Sort by minor version (descending) to get the latest
+    build_files.sort(key=lambda x: x[1], reverse=True)
+    latest_file, latest_minor = build_files[0]
+    
+    # Create the latest file name
+    latest_filename = f"{major_version}_latest.exe"
+    latest_path = version_dir / latest_filename
+    
+    try:
+        # Copy the latest file
+        shutil.copy2(latest_file, latest_path)
+        logger.info(f"Copied {latest_file.name} (version {latest_minor}) to {latest_filename}")
+    except Exception as e:
+        logger.error(f"Failed to copy latest build: {e}")
+
 def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
@@ -210,6 +262,8 @@ def download_builds(manual_pause=False):
                     time.sleep(1.5)
                 # Generate static index.html for this version
                 generate_version_index(version_dir)
+                # Copy the latest build to a _latest.exe file
+                copy_latest_build(version_dir, version)
         finally:
             browser.quit()
     # Download version.txt after builds
