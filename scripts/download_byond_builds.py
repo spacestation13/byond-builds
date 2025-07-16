@@ -80,19 +80,12 @@ def get_available_builds(version, manual_pause=False):
         files = []
         for link in links:
             file_name = link.text.strip()
-            logger.debug(f"Anchor text: '{file_name}'")
             # Only match the specific file types we want: .exe, byond.zip, and byond_linux.zip
             if (file_name.endswith('_byond.exe') or
                 file_name.endswith('_byond.zip') or
                 file_name.endswith('_byond_linux.zip')):
                 if re.search(f"{version}\\.\\d+_", file_name):  # Verify it's the right version
-                    logger.info(f"Matched build file: {file_name}")
                     files.append(file_name)
-                else:
-                    logger.info(f"Skipped file (wrong version pattern): {file_name}")
-            else:
-                if file_name:
-                    logger.debug(f"Skipped anchor (not a build file): {file_name}")
         browser.quit()
         logger.info(f"Returning {len(files)} build files for version {version}: {files}")
         return files
