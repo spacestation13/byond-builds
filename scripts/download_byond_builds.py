@@ -15,8 +15,8 @@ from webdriver_manager.chrome import ChromeDriverManager
 from webdriver_manager.core.os_manager import ChromeType
 from selenium.webdriver.chrome.service import Service
 
-def create_chrome_browser(tmpdirname=None, download=True):
-    """Create a Selenium Chrome browser with all recommended options for CI/headless use."""
+def create_chrome_browser(tmpdirname=None):
+    """Create a Selenium Chrome browser with options for headless use."""
     chrome_service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument('--safebrowsing-disable-download-protection')
@@ -27,16 +27,19 @@ def create_chrome_browser(tmpdirname=None, download=True):
         "--ignore-certificate-errors",
         "--disable-extensions",
         "--no-sandbox",
-        "--disable-dev-shm-usage"
+        "--disable-dev-shm-usage",
+        "--start-maximized",
+        "--no-sandbox",
+        "--agressive-cache-discard",
+        "--remote-debugging-port=9222",
     ]
     for option in options:
         chrome_options.add_argument(option)
-    if download and tmpdirname:
+    if tmpdirname:
         prefs = {
             "download.default_directory": tmpdirname,
             "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
+            "download.directory_upgrade": True
         }
         chrome_options.add_experimental_option("prefs", prefs)
     return webdriver.Chrome(service=chrome_service, options=chrome_options)
@@ -65,7 +68,7 @@ def get_available_builds(version, manual_pause=False):
         logger.error(f"Unknown version: {version}")
         return []
     try:
-        browser = create_chrome_browser(download=False)
+        browser = create_chrome_browser()
         browser.get(url)
         if manual_pause:
             input(f"\n[Manual Step] Please solve any CAPTCHAs or Cloudflare challenges in the browser window, then press Enter to continue...")
@@ -92,7 +95,7 @@ def download_file(url, target_path, manual_pause=False, timeout=120):
     try:
         # Use a unique temp directory for this download
         with tempfile.TemporaryDirectory() as tmpdirname:
-            browser = create_chrome_browser(tmpdirname=tmpdirname, download=True)
+            browser = create_chrome_browser(tmpdirname=tmpdirname)
             file_name = os.path.basename(target_path)
             browser.get(url)
             if manual_pause:
@@ -224,7 +227,7 @@ def download_builds(manual_pause=False):
     output_dir.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as tmpdirname:
         logger.info(f"Using temporary directory for downloads: {tmpdirname}")
-        browser = create_chrome_browser(tmpdirname=tmpdirname, download=True)
+        browser = create_chrome_browser(tmpdirname=tmpdirname)
         try:
             for version in BASE_URLS:
                 version_dir = output_dir / version
