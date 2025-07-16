@@ -11,6 +11,35 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from webdriver_manager.chrome import ChromeDriverManager
+from webdriver_manager.utils import ChromeType
+from selenium.webdriver.chrome.service import Service
+
+def create_chrome_browser(tmpdirname=None, download=True):
+    """Create a Selenium Chrome browser with all recommended options for CI/headless use."""
+    chrome_service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--safebrowsing-disable-download-protection')
+    options = [
+        "--headless",
+        "--disable-gpu",
+        "--window-size=1920,1200",
+        "--ignore-certificate-errors",
+        "--disable-extensions",
+        "--no-sandbox",
+        "--disable-dev-shm-usage"
+    ]
+    for option in options:
+        chrome_options.add_argument(option)
+    if download and tmpdirname:
+        prefs = {
+            "download.default_directory": tmpdirname,
+            "download.prompt_for_download": False,
+            "download.directory_upgrade": True,
+            "safebrowsing.enabled": True
+        }
+        chrome_options.add_experimental_option("prefs", prefs)
+    return webdriver.Chrome(service=chrome_service, options=chrome_options)
 
 # Set up logging
 logging.basicConfig(
@@ -36,8 +65,7 @@ def get_available_builds(version, manual_pause=False):
         logger.error(f"Unknown version: {version}")
         return []
     try:
-        options = webdriver.ChromeOptions()
-        browser = webdriver.Chrome(options=options)
+        browser = create_chrome_browser(download=False)
         browser.get(url)
         if manual_pause:
             input(f"\n[Manual Step] Please solve any CAPTCHAs or Cloudflare challenges in the browser window, then press Enter to continue...")
@@ -64,16 +92,7 @@ def download_file(url, target_path, manual_pause=False, timeout=120):
     try:
         # Use a unique temp directory for this download
         with tempfile.TemporaryDirectory() as tmpdirname:
-            options = webdriver.ChromeOptions()
-            options.add_argument('--safebrowsing-disable-download-protection')
-            prefs = {
-                "download.default_directory": tmpdirname,
-                "download.prompt_for_download": False,
-                "download.directory_upgrade": True,
-                "safebrowsing.enabled": True
-            }
-            options.add_experimental_option("prefs", prefs)
-            browser = webdriver.Chrome(options=options)
+            browser = create_chrome_browser(tmpdirname=tmpdirname, download=True)
             file_name = os.path.basename(target_path)
             browser.get(url)
             if manual_pause:
@@ -203,18 +222,9 @@ def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
     output_dir.mkdir(exist_ok=True)
-    options = webdriver.ChromeOptions()
-    options.add_argument('--safebrowsing-disable-download-protection')
     with tempfile.TemporaryDirectory() as tmpdirname:
-        prefs = {
-            "download.default_directory": tmpdirname,
-            "download.prompt_for_download": False,
-            "download.directory_upgrade": True,
-            "safebrowsing.enabled": True
-        }
         logger.info(f"Using temporary directory for downloads: {tmpdirname}")
-        options.add_experimental_option("prefs", prefs)
-        browser = webdriver.Chrome(options=options)
+        browser = create_chrome_browser(tmpdirname=tmpdirname, download=True)
         try:
             for version in BASE_URLS:
                 version_dir = output_dir / version
