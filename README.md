@@ -53,6 +53,7 @@ Possible automation of the above will be explored again when BYOND.com is operat
 
 ## Disclaimer & Warranty
 
+* This README describes the supported offerings of the service.
 * This repository may be force-pushed and squashed to a single commit at any time.
   * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
 * A minimum of one month of notice will be given for any breaking changes.
