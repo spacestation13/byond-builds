@@ -32,6 +32,7 @@ def create_chrome_browser(tmpdirname=None):
         "--no-sandbox",
         "--agressive-cache-discard",
         "--remote-debugging-port=9222",
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0 SS13 BYOND Mirror/1.0"
     ]
     for option in options:
         chrome_options.add_argument(option)
@@ -75,16 +76,25 @@ def get_available_builds(version, manual_pause=False):
         # Wait for anchors to appear
         WebDriverWait(browser, 15).until(EC.presence_of_element_located((By.TAG_NAME, "a")))
         links = browser.find_elements(By.TAG_NAME, "a")
+        logger.info(f"Found {len(links)} anchor tags on the page for version {version}")
         files = []
         for link in links:
             file_name = link.text.strip()
+            logger.debug(f"Anchor text: '{file_name}'")
             # Only match the specific file types we want: .exe, byond.zip, and byond_linux.zip
             if (file_name.endswith('_byond.exe') or
                 file_name.endswith('_byond.zip') or
                 file_name.endswith('_byond_linux.zip')):
                 if re.search(f"{version}\\.\\d+_", file_name):  # Verify it's the right version
+                    logger.info(f"Matched build file: {file_name}")
                     files.append(file_name)
+                else:
+                    logger.info(f"Skipped file (wrong version pattern): {file_name}")
+            else:
+                if file_name:
+                    logger.debug(f"Skipped anchor (not a build file): {file_name}")
         browser.quit()
+        logger.info(f"Returning {len(files)} build files for version {version}: {files}")
         return files
     except Exception as e:
         logger.error(f"Error fetching build list for version {version}: {str(e)}")
