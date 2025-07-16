@@ -21,6 +21,8 @@ Additional versions are not supported due to:
 
 The files available are: `XXX.YYYY_byond.exe`, `_byond.zip`, `_byond_linux.zip`.
 
+`YYYY` can also be `latest` for the highest minor version of the major. For example, `515.latest_byond.exe`.
+
 `_byondexe.zip` and `_byond_setup.zip` are deemed not relevant.
 
 ## Accessing the Mirrored Files
