@@ -11,28 +11,22 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.core.os_manager import ChromeType
-from selenium.webdriver.chrome.service import Service
 
 def create_chrome_browser(tmpdirname=None):
-    """Create a Selenium Chrome browser with options for headless use."""
-    chrome_service = Service(ChromeDriverManager(chrome_type=ChromeType.CHROMIUM).install())
+    """Create a Selenium Chrome browser"""
     chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument('--safebrowsing-disable-download-protection')
     options = [
+        "--safebrowsing-disable-download-protection",
         "--headless",
         "--disable-gpu",
-        "--window-size=1920,1200",
+        "--window-size=960,540",
         "--ignore-certificate-errors",
         "--disable-extensions",
         "--no-sandbox",
         "--disable-dev-shm-usage",
-        "--start-maximized",
         "--no-sandbox",
         "--agressive-cache-discard",
-        "--remote-debugging-port=9222",
-        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0 SS13 BYOND Mirror/1.0"
+        "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0 SS13BYONDMirror/1.0"
     ]
     for option in options:
         chrome_options.add_argument(option)
@@ -43,7 +37,7 @@ def create_chrome_browser(tmpdirname=None):
             "download.directory_upgrade": True
         }
         chrome_options.add_experimental_option("prefs", prefs)
-    return webdriver.Chrome(service=chrome_service, options=chrome_options)
+    return webdriver.Chrome(options=chrome_options)
 
 # Set up logging
 logging.basicConfig(
@@ -275,7 +269,7 @@ def download_builds(manual_pause=False):
                         logger.info(f"Successfully downloaded {file_name}")
                     else:
                         logger.error(f"Failed to download {file_name}")
-                    time.sleep(1.5)
+                    time.sleep(3)  # Avoid cloudflare rate limiting
                 # Generate static index.html for this version
                 generate_version_index(version_dir)
                 # Copy the latest build to a _latest.exe file
