@@ -17,14 +17,15 @@ def create_chrome_browser(tmpdirname=None):
     chrome_options = webdriver.ChromeOptions()
     options = [
         "--safebrowsing-disable-download-protection",
-        "--headless",
+        "--disable-features=InsecureDownloadWarnings",
+        "--unsafely-treat-insecure-origin-as-secure=https://www.byond.com",
+        # "--headless",
         "--disable-gpu",
         "--window-size=960,540",
         "--ignore-certificate-errors",
         "--disable-extensions",
         "--no-sandbox",
         "--disable-dev-shm-usage",
-        "--no-sandbox",
         "--agressive-cache-discard",
         "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36 Edg/138.0.0.0 SS13BYONDMirror/1.0"
     ]
@@ -52,8 +53,8 @@ logger = logging.getLogger("byond-mirror")
 
 # Define the base URLs for BYOND builds
 BASE_URLS = {
-    '515': 'https://www.byond.com/download/build/515/',
-    '516': 'https://www.byond.com/download/build/516/'
+    '516': 'https://www.byond.com/download/build/516/',
+    '515': 'https://www.byond.com/download/build/515/'
 }
 
 def get_available_builds(version, manual_pause=False):
