@@ -147,6 +147,19 @@ def generate_version_index(version_dir: Path):
         f"    <h1>BYOND Builds for {version_dir.name}</h1>",
         "    <ul>"
     ]
+    # First add special files to the top (.latest_), then sort remaining files by version number in descending order
+    files = sorted(
+        (f for f in version_dir.iterdir() if
+           f.name.endswith('_byond.exe') or
+           f.name.endswith('_byond.zip') or
+           f.name.endswith('_byond_linux.zip')),
+        key=lambda f: (
+            not f.name.startswith(f"{version_dir.name}.latest_"),  # Sort 'latest' files to the top
+            # Extract version number for sorting in descending order
+            -int(re.search(r'\.(\d+)_', f.name).group(1)) if re.search(r'\.(\d+)_', f.name) else 0,
+            f.name  # Final fallback for consistent sorting
+        )
+    )
     for f in files:
         html.append(f"        <li><a href='{f.name}'>{f.name}</a></li>")
     html.append("    </ul>")
