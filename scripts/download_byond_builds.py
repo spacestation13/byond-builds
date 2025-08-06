@@ -186,38 +186,37 @@ def parse_version_from_filename(filename):
     return None, None
 
 def copy_latest_build(version_dir: Path, major_version: str):
-    """Copy the latest build file to a _latest.exe file based on minor version number.
+    """Copy the latest build files (.exe, .zip, and _linux.zip) based on minor version number.
     
     Args:
         version_dir: Directory containing the build files
         major_version: Major version string (e.g., '515')
     """
-    # Find all build files in the directory
-    build_files = []
+    # Group files by minor version
+    version_groups = {}
     for file_path in version_dir.iterdir():
         if file_path.is_file():
             major, minor = parse_version_from_filename(file_path.name)
             if major == major_version and minor is not None:
-                build_files.append((file_path, minor))
+                version_groups.setdefault(minor, []).append(file_path)
     
-    if not build_files:
+    if not version_groups:
         logger.warning(f"No build files found for version {major_version}")
         return
+        
+    # Get all files from the latest version
+    latest_minor = max(version_groups.keys())
+    latest_files = version_groups[latest_minor]
     
-    # Sort by minor version (descending) to get the latest
-    build_files.sort(key=lambda x: x[1], reverse=True)
-    latest_file, latest_minor = build_files[0]
-    
-    # Create the latest file name
-    latest_filename = f"{major_version}_latest.exe"
-    latest_path = version_dir / latest_filename
-    
-    try:
-        # Copy the latest file
-        shutil.copy2(latest_file, latest_path)
-        logger.info(f"Copied {latest_file.name} (version {latest_minor}) to {latest_filename}")
-    except Exception as e:
-        logger.error(f"Failed to copy latest build: {e}")
+    for source_file in latest_files:
+        try:
+            # Replace "major.minor_" with "major.latest_" in the filename
+            target_name = re.sub(fr'{major_version}\.\d+_', f'{major_version}.latest_', source_file.name)
+            target_path = version_dir / target_name
+            shutil.copy2(source_file, target_path)
+            logger.info(f"Copied {source_file.name} (version {latest_minor}) to {target_name}")
+        except Exception as e:
+            logger.error(f"Failed to copy {source_file.name}: {e}")
 
 def download_builds(manual_pause=False):
     """Main function to download BYOND builds"""

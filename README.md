@@ -21,6 +21,8 @@ Additional versions are not supported due to:
 
 The files available are: `XXX.YYYY_byond.exe`, `_byond.zip`, `_byond_linux.zip`.
 
+`YYYY` can also be `latest` for the highest minor version of the major. For example, `515.latest_byond.exe`.
+
 `_byondexe.zip` and `_byond_setup.zip` are deemed not relevant.
 
 ## Accessing the Mirrored Files
@@ -51,6 +53,7 @@ Possible automation of the above will be explored again when BYOND.com is operat
 
 ## Disclaimer & Warranty
 
+* This README describes the supported offerings of the service.
 * This repository may be force-pushed and squashed to a single commit at any time.
   * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
 * A minimum of one month of notice will be given for any breaking changes.
