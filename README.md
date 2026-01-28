@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository mirrors the downloadable installers and portable files from the [official BYOND website](https://www.byond.com/download/build/), making them available through GitHub Pages.
+This repository mirrors the downloadable installers and portable files from the [official BYOND website](https://www.byond.com/download/build/), hosted on Cloudflare R2.
 
 ## Mission Statement
 This repository aims to mirror BYOND versions that are relevant to the larger SS13 community. 
@@ -19,7 +19,7 @@ Additional versions are not supported due to:
 * Maintainer overhead.
 * I don't really want to encourage people to use ancient BYOND versions.
 
-The files available are: `XXX.YYYY_byond.exe`, `_byond.zip`, `_byond_linux.zip`.
+The files available are: `XXX.YYYY_byond.exe`, `XXX.YYYY_byond.zip`, `XXX.YYYY_byond_linux.zip`.
 
 `YYYY` can also be `latest` for the highest minor version of the major. For example, `515.latest_byond.exe`.
 
@@ -27,29 +27,28 @@ The files available are: `XXX.YYYY_byond.exe`, `_byond.zip`, `_byond_linux.zip`.
 
 ## Accessing the Mirrored Files
 
-The files are available through GitHub Pages at:
+The files are available at:
 
 ```
-https://spacestation13.github.io/byond-builds/{version}/{filename}
+https://byond-builds.dm-lang.org/{version}/{filename}
 ```
 
 For example:
 ```
-https://spacestation13.github.io/byond-builds/515/515.1647_byond.exe
+https://byond-builds.dm-lang.org/515/515.1647_byond.exe
 ```
 
 This follows the same format as BYOND does.
 
 ## How It Works
 
-The `./scripts/download_byond_builds.py` script is run manually to:
+The scripts in this repository are run manually to:
 
-1. Check the official BYOND website for new builds
-2. Download any new build files that are not already mirrored
-3. Commit the new files to the repository
-4. Deploy the updated files to GitHub Pages
+**Download**: `py .\scripts\download_byond_builds.py` checks the official BYOND website for new versions and downloads them locally.
 
-Possible automation of the above will be explored again when BYOND.com is operational.
+**Upload**: `py .\scripts\upload_to_r2.py` uploads the relevant files to Cloudflare R2
+
+Currently, attempts to automate the downloading process to happen via GitHub actions has been foiled.
 
 ## Disclaimer & Warranty
 
@@ -58,16 +57,33 @@ Possible automation of the above will be explored again when BYOND.com is operat
   * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
 * A minimum of one month of notice will be given for any breaking changes.
   * Yes, this includes removing the n-3 BYOND version.
-* It's common for beta BYOND versions to be completely broken and unable to compile SS13 codebases. This mirror does not differentiate between broken versions in any way.
-* The above policies can change at any time, please contact @ZeWaka on Discord if you seek changes.
+* It's common for BYOND versions to be completely broken. This mirror does not differentiate between broken versions in any way.
 * Some BYOND versions lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
+* I reserve the right to deal with active malicious abuse of the mirror as I see fit.
+* All these policies can change at any time, please contact `ZeWaka` on Discord if you seek changes.
  
 For additional warranty and disclaimer information, please see the [LICENSE](./LICENSE).
 
 ## License & Attribution
 
-This repository only provides a mirror of officially released BYOND software. All rights to the BYOND software belong to their respective owners.
+This repository only provides a mirror of officially released BYOND software.
 
-The non-BYOND code in the this repository (the mirroring scripts and such) is [licensed under](./LICENSE) the MIT license.
+This mirror is not affiliated with nor endorsed by BYOND.
 
-This mirror is not affiliated with or endorsed by BYOND.
+All `.zip` and `.exe` files in this repository are the property of [BYOND Software](https://www.byond.com/).
+
+All rights to these files belong to their respective owners.
+
+All other files are [licensed under](./LICENSE) the MIT license.
+
+---
+
+## Internal - Adding a New BYOND Major Version
+
+When BYOND releases a new major version, update the following:
+
+1. **`scripts/download_byond_builds.py`** - Add to `BASE_URLS` dict
+
+2. **`scripts/upload_to_r2.py`** - Add to `BASE_VERSIONS` list
+
+3. **`public/index.html`** - Add version section in the HTML body and JavaScript
