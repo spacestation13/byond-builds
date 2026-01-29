@@ -58,9 +58,14 @@ Possible automation of the above will be explored again when BYOND.com is operat
   * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
 * A minimum of one month of notice will be given for any breaking changes.
   * Yes, this includes removing the n-3 BYOND version.
-* It's common for beta BYOND versions to be completely broken and unable to compile SS13 codebases. This mirror does not differentiate between broken versions in any way.
-* The above policies can change at any time, please contact @ZeWaka on Discord if you seek changes.
+  * Notices will be given in the following:
+    * [coderbus's](https://discord.gg/Vh8TJp9) `#tooling-questions` discord channel.
+    * A GitHub Discussion post in the Announcements category.
+    * The root index.html page.
+* It's common for BYOND versions to be completely broken. This mirror does not differentiate between broken versions in any way.
 * Some BYOND versions lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
+* I reserve the right to deal with active malicious abuse of the mirror as I see fit.
+* All these policies can change at any time, please contact `ZeWaka` on Discord if you seek changes.
  
 For additional warranty and disclaimer information, please see the [LICENSE](./LICENSE).
 
