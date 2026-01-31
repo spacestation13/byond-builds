@@ -114,11 +114,46 @@
             const now = new Date();
             document.getElementById('last-updated-date').textContent = now.toISOString().split('T')[0];
 
+            const r2BaseUrl = 'https://byond-builds.dm-lang.org';
+
+            if (window.location.protocol === 'file:') {
+                ['516', '515'].forEach(version => {
+                    const listElement = document.getElementById(`v${version}-list`);
+                    listElement.innerHTML = '';
+
+                    const iframe = document.createElement('iframe');
+                    iframe.src = `${version}/index.html`;
+                    iframe.style.width = '100%';
+                    iframe.style.border = '0';
+                    iframe.style.minHeight = '400px';
+                    iframe.setAttribute('title', `BYOND ${version} builds`);
+
+                    iframe.addEventListener('load', () => {
+                        try {
+                            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+                            if (doc?.body) {
+                                iframe.style.height = `${doc.body.scrollHeight}px`;
+                            }
+                        } catch (_) {
+                            // If access fails, keep default height.
+                        }
+                    });
+
+                    const li = document.createElement('li');
+                    li.style.backgroundColor = 'transparent';
+                    li.style.borderLeft = '0';
+                    li.style.padding = '0';
+                    li.appendChild(iframe);
+                    listElement.appendChild(li);
+                });
+                return;
+            }
+
             // Function to fetch and display files
             async function fetchFiles(version) {
                 try {
                     // This will only work when hosted on GitHub Pages
-                    const response = await fetch(`/byond-builds/${version}/`);
+                    const response = await fetch(new URL(`${version}/`, window.location.href));
 
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
@@ -156,7 +191,7 @@
                     links.forEach(link => {
                         const li = document.createElement('li');
                         const a = document.createElement('a');
-                        a.href = `/byond-builds/${version}/${link.name}`;
+                        a.href = link.url;
                         a.textContent = link.name;
                         li.appendChild(a);
                         listElement.appendChild(li);

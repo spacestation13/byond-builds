@@ -57,6 +57,9 @@ BASE_URLS = {
     '515': 'https://www.byond.com/download/build/515/'
 }
 
+R2_BASE_URL = "https://byond-builds.dm-lang.org"
+GH_PAGES_BASE_URL = "https://spacestation13.github.io/byond-builds"
+
 def get_available_builds(version, manual_pause=False):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
@@ -140,6 +143,7 @@ def generate_version_index(version_dir: Path):
         "<html lang='en'>",
         "<head>",
         "    <meta charset='UTF-8'>",
+        f"    <base href='{R2_BASE_URL}/{version_dir.name}/'>",
         f"    <title>BYOND Builds for {version_dir.name}</title>",
         "    <style>body{font-family:sans-serif;max-width:600px;margin:2em auto;}h1{font-size:1.5em;}ul{padding:0;}li{margin:8px 0;list-style:none;}a{color:#0366d6;text-decoration:none;}a:hover{text-decoration:underline;}</style>",
         "</head>",
@@ -163,7 +167,7 @@ def generate_version_index(version_dir: Path):
     for f in files:
         html.append(f"        <li><a href='{f.name}'>{f.name}</a></li>")
     html.append("    </ul>")
-    html.append("    <p style='font-size:0.9em;color:#666;margin-top:2em;'>This is a static listing generated automatically. Return to <a href='../index.html'>main mirror page</a>.</p>")
+    html.append(f"    <p style='font-size:0.9em;color:#666;margin-top:2em;'>This is a static listing generated automatically. Return to <a href='{GH_PAGES_BASE_URL}/index.html'>main mirror page</a>.</p>")
     html.append("</body>\n</html>")
     (version_dir / "index.html").write_text("\n".join(html), encoding="utf-8")
 
