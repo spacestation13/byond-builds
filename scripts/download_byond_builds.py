@@ -58,6 +58,9 @@ BASE_URLS = {
     #'515': 'https://www.byond.com/download/build/515/'
 }
 
+MIRROR_BASE_URL = "https://byond-builds.dm-lang.org"
+MIRROR_USER_AGENT = "SS13BYONDMirror/1.0 (+https://byond-builds.dm-lang.org)"
+
 def get_available_builds(version, manual_pause=False):
     """Get list of available build files from BYOND website"""
     url = BASE_URLS.get(version)
@@ -127,6 +130,23 @@ def download_file(url, target_path, manual_pause=False, timeout=120):
                 return False
     except Exception as e:
         logger.error(f"Error downloading {url}: {str(e)}")
+        return False
+
+def download_file_direct(url: str, target_path: Path, timeout: int = 120) -> bool:
+    logger.info(f"Downloading via direct HTTP: {url}")
+    try:
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        request = urllib.request.Request(url, headers={"User-Agent": MIRROR_USER_AGENT})
+        with urllib.request.urlopen(request, timeout=timeout) as response:
+            if response.status >= 400:
+                logger.error(f"HTTP error {response.status} for {url}")
+                return False
+            with open(target_path, "wb") as f:
+                shutil.copyfileobj(response, f)
+        logger.info(f"Downloaded {url} to {target_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Direct download failed for {url}: {e}")
         return False
 
 def is_build_filename(name: str) -> bool:
@@ -212,6 +232,25 @@ def download_version_txt(output_dir: Path, browser, manual_pause=False):
     except Exception as e:
         logger.error(f"Failed to download version.txt: {e}")
 
+def get_mirror_latest_version(base_url: str = MIRROR_BASE_URL) -> Optional[Tuple[str, int]]:
+    """Return (major, minor) from mirror version.txt if available."""
+    url = f"{base_url}/version.txt"
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": MIRROR_USER_AGENT})
+        with urllib.request.urlopen(request, timeout=30) as response:
+            if response.status >= 400:
+                logger.warning(f"Mirror version.txt HTTP {response.status}: {url}")
+                return None
+            content = response.read().decode("utf-8", errors="replace").strip()
+        match = re.match(r"^(\d+)\.(\d+)$", content)
+        if not match:
+            logger.warning(f"Mirror version.txt is not in expected format: {content}")
+            return None
+        return match.group(1), int(match.group(2))
+    except Exception as e:
+        logger.warning(f"Failed to read mirror version.txt: {e}")
+        return None
+
 def parse_version_from_filename(filename):
     """Parse major and minor version from a BYOND build filename.
     
@@ -246,10 +285,17 @@ def copy_latest_build(version_dir: Path, major_version: str, create_local: bool 
             logger.error(f"Failed to copy {source_file.name}: {e}")
     return latest_names
 
-def download_builds(manual_pause=False):
+def download_builds(manual_pause=False, use_byond_only=False):
     """Main function to download BYOND builds"""
     output_dir = Path("public")
     output_dir.mkdir(exist_ok=True)
+    mirror_latest = None if use_byond_only else get_mirror_latest_version()
+    if mirror_latest:
+        logger.info(f"Mirror latest version: {mirror_latest[0]}.{mirror_latest[1]}")
+    elif use_byond_only:
+        logger.info("Mirror download disabled: using BYOND only")
+    else:
+        logger.warning("Mirror version.txt not available; falling back to BYOND only")
     with tempfile.TemporaryDirectory() as tmpdirname:
         logger.info(f"Using temporary directory for downloads: {tmpdirname}")
         browser = create_chrome_browser(tmpdirname=tmpdirname)
@@ -270,6 +316,18 @@ def download_builds(manual_pause=False):
                     if file_name in existing_files:
                         logger.info(f"File {file_name} already exists, skipping")
                         continue
+                    mirror_candidate = False
+                    if mirror_latest and not use_byond_only:
+                        major, minor = parse_version_from_filename(file_name)
+                        if major == version and minor is not None and major == mirror_latest[0]:
+                            mirror_candidate = minor <= mirror_latest[1]
+                    if mirror_candidate:
+                        mirror_url = f"{MIRROR_BASE_URL}/{version}/{file_name}"
+                        target_path = version_dir / file_name
+                        if download_file_direct(mirror_url, target_path):
+                            logger.info(f"Downloaded from mirror: {file_name}")
+                            downloaded_files.append(file_name)
+                            continue
                     url = f"{BASE_URLS[version]}{file_name}"
                     target_path = str(version_dir / file_name)
                     logger.info(f"Downloading {url} to {target_path}")
@@ -315,7 +373,8 @@ def download_builds(manual_pause=False):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Download BYOND builds locally.")
     parser.add_argument('--manual-pause', action='store_true', help='Pause after opening browser for manual CAPTCHA/Cloudflare solving')
+    parser.add_argument('--use-byond-only', action='store_true', help='Disable mirror downloads and use BYOND only (if mirror is corrupted)')
     args = parser.parse_args()
     logger.info("Starting BYOND builds download")
-    download_builds(manual_pause=args.manual_pause)
+    download_builds(manual_pause=args.manual_pause, use_byond_only=args.use_byond_only)
     logger.info("Finished BYOND builds download")
