@@ -180,8 +180,8 @@ def main():
         for file_path in public_dir.glob("*"):
             if file_path.is_file():
                 cache_control = cache_control_for_file(file_path)
-                # Always force upload index.html since it may have new versions listed
-                force = file_path.suffix == '.html'
+                # Always force upload index.html and version.txt since they may have new versions listed
+                force = file_path.suffix in {'.html', '.txt'}
                 if upload_file_to_r2(client, file_path, file_path.name, skip_existing=skip_existing, cache_control=cache_control, force_upload=force):
                     total_successful += 1
                 else:
