@@ -22,3 +22,10 @@ var/
 
 # Logs
 *.log
+
+# sekrit
+.env
+!.env.example
+# Build artifacts - binaries are uploaded to R2, not committed
+public/**/*.exe
+public/**/*.zip
