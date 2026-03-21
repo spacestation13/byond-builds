@@ -7,6 +7,8 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 import boto3
 from botocore.exceptions import ClientError
+import shutil
+import re
 try:
     from dotenv import load_dotenv
 except Exception:
@@ -143,6 +145,40 @@ def upload_directory(
     
     return successful, failed
 
+def parse_version_from_filename(filename: str) -> Tuple[Optional[str], Optional[int]]:
+    pattern = r"(\d+)\.(\d+)_byond(?:\.exe|\.zip|_linux\.zip)"
+    match = re.match(pattern, filename)
+    if match:
+        return match.group(1), int(match.group(2))
+    return None, None
+
+def ensure_latest_files(version_dir: Path, major_version: str) -> List[Path]:
+    """Create .latest_ copies for the highest minor in the version directory if missing.
+
+    Returns list of created latest file paths.
+    """
+    files = [p for p in version_dir.iterdir() if p.is_file() and is_build_filename(p.name)]
+    version_groups = {}
+    for p in files:
+        major, minor = parse_version_from_filename(p.name)
+        if major == major_version and minor is not None:
+            version_groups.setdefault(minor, []).append(p)
+    if not version_groups:
+        return []
+    latest_minor = max(version_groups.keys())
+    created = []
+    for src in version_groups[latest_minor]:
+        target_name = re.sub(fr'{major_version}\.\d+_', f'{major_version}.latest_', src.name)
+        target_path = version_dir / target_name
+        if not target_path.exists():
+            try:
+                shutil.copy2(src, target_path)
+                logger.info(f"Created latest file: {target_path.name}")
+                created.append(target_path)
+            except Exception as e:
+                logger.error(f"Failed to create latest file {target_path.name}: {e}")
+    return created
+
 def main():
     parser = argparse.ArgumentParser(description="Upload BYOND builds and site to Cloudflare R2.")
     parser.add_argument('--skip-existing', action='store_true', default=True, 
@@ -195,6 +231,8 @@ def main():
             continue
         
         logger.info(f"Uploading version {version}...")
+        # Ensure .latest_ copies exist locally so they can be uploaded/overwritten
+        ensure_latest_files(version_dir, version)
         
         # Upload HTML files first (always force since they change with each new build)
         if not args.binaries_only:
@@ -212,7 +250,9 @@ def main():
                 if file_path.is_file() and is_build_filename(file_path.name):
                     key = f"{version}/{file_path.name}"
                     cache_control = cache_control_for_file(file_path)
-                    if upload_file_to_r2(client, file_path, key, skip_existing=skip_existing, cache_control=cache_control):
+                    # Always force-upload "latest" build files so the public "latest" isn't stale
+                    force_upload = is_latest_filename(file_path.name)
+                    if upload_file_to_r2(client, file_path, key, skip_existing=skip_existing, cache_control=cache_control, force_upload=force_upload):
                         total_successful += 1
                     else:
                         total_failed += 1
