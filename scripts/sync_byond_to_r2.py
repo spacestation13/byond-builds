@@ -68,6 +68,7 @@ class VersionSyncState:
     existing_r2_names: Set[str]
     available_builds: List[str]
     latest_changed: bool
+    needs_sync: bool
 
 
 class DirectoryIndexParser(HTMLParser):
@@ -369,6 +370,10 @@ def get_r2_object_identity(client, key: str) -> Optional[Tuple[str, int]]:
     return response.get("ETag", "").strip('"'), response["ContentLength"]
 
 
+def r2_object_exists(client, key: str) -> bool:
+    return get_r2_object_identity(client, key) is not None
+
+
 def get_latest_build_targets(file_names: List[str], major_version: str) -> List[Tuple[str, str]]:
     version_groups: Dict[int, List[str]] = {}
     for file_name in file_names:
@@ -411,6 +416,23 @@ def latest_aliases_need_update(client, version: str, existing_r2_names: Set[str]
     return False
 
 
+def missing_required_version_objects(version: str, existing_r2_names: Set[str], available_builds: List[str]) -> bool:
+    missing_source_builds = sorted(set(available_builds) - existing_r2_names, key=build_sort_key)
+    if missing_source_builds:
+        logger.info(
+            "Version %s needs sync because %s required build file(s) are missing from R2",
+            version,
+            len(missing_source_builds),
+        )
+        return True
+
+    if "index.html" not in existing_r2_names:
+        logger.info("Version %s needs sync because index.html is missing from R2", version)
+        return True
+
+    return False
+
+
 def scan_version_state(client, version: str) -> Optional[VersionSyncState]:
     existing_r2_names = list_r2_names(client, version)
     available_builds = get_available_builds(version)
@@ -423,10 +445,13 @@ def scan_version_state(client, version: str) -> Optional[VersionSyncState]:
         logger.error(f"Failed to inspect R2 state for version {version}: {error}")
         return None
 
+    needs_sync = latest_changed or missing_required_version_objects(version, existing_r2_names, available_builds)
+
     return VersionSyncState(
         existing_r2_names=existing_r2_names,
         available_builds=available_builds,
         latest_changed=latest_changed,
+        needs_sync=needs_sync,
     )
 
 
@@ -556,9 +581,15 @@ def sync_builds() -> int:
             return 1
         version_states[version] = state
 
-    if not any(state.latest_changed for state in version_states.values()):
-        logger.info("Skipping sync because no latest build aliases changed")
+    latest_changed = any(state.latest_changed for state in version_states.values())
+    root_objects_missing = not r2_object_exists(client, "version.txt") or not r2_object_exists(client, "index.html")
+
+    if not any(state.needs_sync for state in version_states.values()) and not root_objects_missing:
+        logger.info("Skipping sync because no latest build aliases changed and no required R2 objects are missing")
         return 0
+
+    if root_objects_missing:
+        logger.info("Continuing sync because required root objects are missing from R2")
 
     official_version_txt = fetch_text(BYOND_VERSION_TXT_URL, source_label="BYOND")
     if official_version_txt is None:
@@ -586,7 +617,8 @@ def sync_builds() -> int:
         logger.error(f"Finished with {failures} failed operations")
         return 1
 
-    set_github_output("synced", "true")
+    if latest_changed:
+        set_github_output("synced", "true")
     logger.info("Finished with no sync failures")
     return 0
 
