@@ -85,3 +85,4 @@ Secrets:
 * `R2_ACCESS_KEY_ID` - R2 access key ID
 * `R2_SECRET_ACCESS_KEY` - R2 secret access key
 * `R2_BUCKET` - Bucket name to upload into
+* `TRACY_WORKFLOW_DISPATCH_TOKEN` - GitHub token with perms to dispatch to `spacestation13/byond-tracy-offset-extractor`
