@@ -10,6 +10,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from html.parser import HTMLParser
 from pathlib import Path
 from typing import Dict, List, Optional, Set, Tuple
@@ -60,6 +61,13 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 REPO_PUBLIC_DIR = REPO_ROOT / "public"
 
 _host_request_times: Dict[str, float] = {}
+
+
+@dataclass(frozen=True)
+class VersionSyncState:
+    existing_r2_names: Set[str]
+    available_builds: List[str]
+    latest_changed: bool
 
 
 class DirectoryIndexParser(HTMLParser):
@@ -349,6 +357,18 @@ def upload_file_to_r2(client, local_path: Path, key: str) -> bool:
         return False
 
 
+def get_r2_object_identity(client, key: str) -> Optional[Tuple[str, int]]:
+    try:
+        response = client.head_object(Bucket=R2_BUCKET, Key=key)
+    except ClientError as error:
+        error_code = str(error.response.get("Error", {}).get("Code", ""))
+        if error_code in {"404", "NoSuchKey", "NotFound"}:
+            return None
+        raise
+
+    return response.get("ETag", "").strip('"'), response["ContentLength"]
+
+
 def get_latest_build_targets(file_names: List[str], major_version: str) -> List[Tuple[str, str]]:
     version_groups: Dict[int, List[str]] = {}
     for file_name in file_names:
@@ -365,6 +385,49 @@ def get_latest_build_targets(file_names: List[str], major_version: str) -> List[
         target_name = re.sub(fr"{major_version}\.\d+_", f"{major_version}.latest_", source_name)
         latest_targets.append((source_name, target_name))
     return latest_targets
+
+
+def latest_aliases_need_update(client, version: str, existing_r2_names: Set[str], available_builds: List[str]) -> bool:
+    latest_targets = get_latest_build_targets(available_builds, version)
+    if not latest_targets:
+        logger.warning(f"No latest targets found for version {version}")
+        return False
+
+    for source_name, alias_name in latest_targets:
+        if source_name not in existing_r2_names:
+            logger.info("Version %s needs sync because %s is not in R2", version, source_name)
+            return True
+
+        if alias_name not in existing_r2_names:
+            logger.info("Version %s needs sync because %s is missing from R2", version, alias_name)
+            return True
+
+        source_identity = get_r2_object_identity(client, f"{version}/{source_name}")
+        alias_identity = get_r2_object_identity(client, f"{version}/{alias_name}")
+        if source_identity != alias_identity:
+            logger.info("Version %s needs sync because %s does not match %s", version, alias_name, source_name)
+            return True
+
+    return False
+
+
+def scan_version_state(client, version: str) -> Optional[VersionSyncState]:
+    existing_r2_names = list_r2_names(client, version)
+    available_builds = get_available_builds(version)
+    if available_builds is None:
+        return None
+
+    try:
+        latest_changed = latest_aliases_need_update(client, version, existing_r2_names, available_builds)
+    except ClientError as error:
+        logger.error(f"Failed to inspect R2 state for version {version}: {error}")
+        return None
+
+    return VersionSyncState(
+        existing_r2_names=existing_r2_names,
+        available_builds=available_builds,
+        latest_changed=latest_changed,
+    )
 
 
 def read_text_required(path: Path) -> str:
@@ -410,18 +473,25 @@ def write_version_txt(content: str, output_path: Path):
     output_path.write_text(content.strip() + "\n", encoding="utf-8")
 
 
-def sync_version(client, stage_root: Path, version: str) -> int:
+def set_github_output(name: str, value: str):
+    output_path = os.getenv("GITHUB_OUTPUT")
+    if not output_path:
+        return
+
+    with open(output_path, "a", encoding="utf-8") as file_handle:
+        file_handle.write(f"{name}={value}\n")
+
+
+def sync_version(client, stage_root: Path, version: str, state: VersionSyncState) -> int:
     version_dir = stage_root / version
     version_dir.mkdir(parents=True, exist_ok=True)
 
-    existing_r2_names = list_r2_names(client, version)
+    existing_r2_names = state.existing_r2_names
     existing_build_names = {name for name in existing_r2_names if is_build_filename(name)}
     source_build_names = {name for name in existing_build_names if not is_latest_filename(name)}
     existing_latest_names = {name for name in existing_r2_names if is_latest_filename(name)}
 
-    available_builds = get_available_builds(version)
-    if available_builds is None:
-        return 1
+    available_builds = state.available_builds
 
     failures = 0
     local_source_paths: Dict[str, Path] = {}
@@ -475,20 +545,32 @@ def sync_version(client, stage_root: Path, version: str) -> int:
 
 def sync_builds() -> int:
     client = get_r2_client()
+    set_github_output("synced", "false")
+
+    logger.info(f"Target major versions: {', '.join(MAJOR_VERSIONS)}")
+
+    version_states: Dict[str, VersionSyncState] = {}
+    for version in MAJOR_VERSIONS:
+        state = scan_version_state(client, version)
+        if state is None:
+            return 1
+        version_states[version] = state
+
+    if not any(state.latest_changed for state in version_states.values()):
+        logger.info("Skipping sync because no latest build aliases changed")
+        return 0
 
     official_version_txt = fetch_text(BYOND_VERSION_TXT_URL, source_label="BYOND")
     if official_version_txt is None:
         logger.error("Failed to fetch official version.txt")
         return 1
 
-    logger.info(f"Target major versions: {', '.join(MAJOR_VERSIONS)}")
-
     failures = 0
     with tempfile.TemporaryDirectory(prefix="byond-r2-sync-") as temp_dir:
         stage_root = Path(temp_dir)
 
         for version in MAJOR_VERSIONS:
-            failures += sync_version(client, stage_root, version)
+            failures += sync_version(client, stage_root, version, version_states[version])
 
         version_txt_path = stage_root / "version.txt"
         write_version_txt(official_version_txt, version_txt_path)
@@ -504,6 +586,7 @@ def sync_builds() -> int:
         logger.error(f"Finished with {failures} failed operations")
         return 1
 
+    set_github_output("synced", "true")
     logger.info("Finished with no sync failures")
     return 0
 
