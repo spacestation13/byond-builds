@@ -57,12 +57,12 @@
             font-style: italic;
         }
 
-        .manual-note {
-            background: #fffbe6;
-            border-left: 4px solid #ffe066;
+        .note {
+            background: #d8f3dc;
+            border-left: 4px solid #52b788;
             padding: 10px;
             margin-bottom: 20px;
-            color: #7a5c00;
+            color: #2d6a4f;
         }
 
         .github-link {
@@ -76,11 +76,10 @@
 
 <body>
     <h1>BYOND Build Mirror</h1>
-    <div class="manual-note">
-        <strong>Note:</strong> This mirror is updated manually. New builds are added when a maintainer runs the update
-        script and commits the results.
+    <div class="note">
+        This is an unofficial mirror of BYOND build executables. <br />
+        This mirror updates automatically every 30 minutes.
     </div>
-    <p>This is an unofficial mirror of BYOND build executables. Updated manually by maintainers.</p>
 
     <div class="version-container">
         <h2><a href="516">Version 516</a></h2>
@@ -101,7 +100,7 @@
     </div>
     <div class="github-link">
         <a href="https://github.com/spacestation13/byond-builds" target="_blank" rel="noopener">
-            GitHub
+            GitHub & Policies
         </a>
         &nbsp;|&nbsp;
         <a href="version.txt">
@@ -109,15 +108,15 @@
         </a>
     </div>
     <script>
+        const versions = ['516', '515'];
+
         document.addEventListener('DOMContentLoaded', async () => {
             // Set current date
             const now = new Date();
             document.getElementById('last-updated-date').textContent = now.toISOString().split('T')[0];
 
-            const r2BaseUrl = 'https://byond-builds.dm-lang.org';
-
             if (window.location.protocol === 'file:') {
-                ['516', '515'].forEach(version => {
+                versions.forEach(version => {
                     const listElement = document.getElementById(`v${version}-list`);
                     listElement.innerHTML = '';
 
@@ -203,9 +202,7 @@
                 }
             }
 
-            // Fetch both versions
-            fetchFiles('516');
-            fetchFiles('515');
+            await Promise.all(versions.map(fetchFiles));
         });
     </script>
 </body>

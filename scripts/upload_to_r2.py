@@ -4,11 +4,10 @@ import logging
 import argparse
 import mimetypes
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
 import boto3
 from botocore.exceptions import ClientError
 import shutil
-import re
 try:
     from dotenv import load_dotenv
 except Exception:
@@ -33,13 +32,10 @@ R2_BUCKET = os.getenv("R2_BUCKET", "byond-builds")
 R2_ENDPOINT = os.getenv("R2_ENDPOINT")
 R2_ACCESS_KEY_ID = os.getenv("R2_ACCESS_KEY_ID")
 R2_SECRET_ACCESS_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
-R2_PUBLIC_BASE_URL = os.getenv("R2_PUBLIC_BASE_URL", "https://files.byond-builds.dm-lang.org")
+R2_PUBLIC_BASE_URL = os.getenv("R2_PUBLIC_BASE_URL") or "https://files.byond-builds.dm-lang.org"
 R2_CACHE_CONTROL = os.getenv("R2_CACHE_CONTROL", "public, max-age=31536000, immutable")
 R2_CACHE_CONTROL_LATEST = os.getenv("R2_CACHE_CONTROL_LATEST", "public, max-age=300")
 R2_CACHE_CONTROL_HTML = os.getenv("R2_CACHE_CONTROL_HTML", "public, max-age=300")
-
-# Define the base version paths
-BASE_VERSIONS = ['515', '516']
 
 def get_r2_client():
     if not (R2_ENDPOINT and R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY):
@@ -152,6 +148,21 @@ def parse_version_from_filename(filename: str) -> Tuple[Optional[str], Optional[
         return match.group(1), int(match.group(2))
     return None, None
 
+def normalize_versions(versions: Iterable[str]) -> List[str]:
+    normalized = {
+        str(int(str(version).strip()))
+        for version in versions
+        if str(version).strip().isdigit()
+    }
+    return sorted(normalized, key=int, reverse=True)
+
+def discover_version_dirs(public_dir: Path, explicit_versions: Optional[List[str]] = None) -> List[str]:
+    if explicit_versions:
+        return normalize_versions(explicit_versions)
+
+    discovered_versions = [path.name for path in public_dir.iterdir() if path.is_dir() and path.name.isdigit()]
+    return normalize_versions(discovered_versions)
+
 def ensure_latest_files(version_dir: Path, major_version: str) -> List[Path]:
     """Create .latest_ copies for the highest minor in the version directory if missing.
 
@@ -181,17 +192,16 @@ def ensure_latest_files(version_dir: Path, major_version: str) -> List[Path]:
 
 def main():
     parser = argparse.ArgumentParser(description="Upload BYOND builds and site to Cloudflare R2.")
-    parser.add_argument('--skip-existing', action='store_true', default=True, 
-                       help='Skip files that already exist in R2 (default: True)')
     parser.add_argument('--force', action='store_true', 
                        help='Upload all files even if they exist (opposite of --skip-existing)')
     parser.add_argument('--html-only', action='store_true', 
                        help='Only upload HTML/text files, skip binaries')
     parser.add_argument('--binaries-only', action='store_true', 
                        help='Only upload binary files, skip HTML/text')
+    parser.add_argument('--versions', nargs='+', help='Explicit version directories to upload')
     args = parser.parse_args()
     
-    skip_existing = not args.force if args.force else args.skip_existing
+    skip_existing = not args.force
     
     logger.info("Starting R2 upload")
     logger.info(f"Skip existing: {skip_existing}")
@@ -206,6 +216,10 @@ def main():
     if not public_dir.exists():
         logger.error(f"Public directory not found: {public_dir}")
         return 1
+
+    versions = discover_version_dirs(public_dir, args.versions)
+    if not versions:
+        logger.warning(f"No version directories found under {public_dir}")
     
     total_successful = 0
     total_failed = 0
@@ -224,7 +238,7 @@ def main():
                     total_failed += 1
     
     # Upload version directories
-    for version in BASE_VERSIONS:
+    for version in versions:
         version_dir = public_dir / version
         if not version_dir.exists():
             logger.warning(f"Version directory not found: {version_dir}")

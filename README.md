@@ -40,16 +40,6 @@ https://byond-builds.dm-lang.org/515/515.1647_byond.exe
 
 This follows the same format as BYOND does.
 
-## How It Works
-
-The scripts in this repository are run manually to:
-
-**Download**: `py .\scripts\download_byond_builds.py` checks the official BYOND website for new versions and downloads them locally.
-
-**Upload**: `py .\scripts\upload_to_r2.py` uploads the relevant files to Cloudflare R2
-
-Currently, attempts to automate the downloading process to happen via GitHub actions has been foiled.
-
 ## Disclaimer & Warranty
 
 * This README describes the supported offerings of the service.
@@ -82,12 +72,16 @@ All other files are [licensed under](./LICENSE) the MIT license.
 
 ---
 
-## Internal - Adding a New BYOND Major Version
+## Internal
 
-When BYOND releases a new major version, update the following:
+To set the BYOND major versions targeted:
 
-1. **`scripts/download_byond_builds.py`** - Add to `BASE_URLS` dict
+1. `MAJOR_VERSIONS` in `scripts/sync_byond_to_r2.py`
+2. The version sections in `public/index.html`
+3. The checked-in template file for each version, like `public/516/index.html`
 
-2. **`scripts/upload_to_r2.py`** - Add to `BASE_VERSIONS` list
-
-3. **`public/index.html`** - Add version section in the HTML body and JavaScript
+Secrets:
+* `R2_ENDPOINT` - Cloudflare R2 S3 endpoint, for example `https://<account_id>.r2.cloudflarestorage.com`
+* `R2_ACCESS_KEY_ID` - R2 access key ID
+* `R2_SECRET_ACCESS_KEY` - R2 secret access key
+* `R2_BUCKET` - Bucket name to upload into
