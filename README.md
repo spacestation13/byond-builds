@@ -15,11 +15,12 @@ This repository does not aim to provide an archive of every BYOND version ever.
 * If there is a current beta version, all minor versions.
 
 Additional versions are not supported due to:
-* GitHub repository size limits.
 * Maintainer overhead.
 * I don't really want to encourage people to use ancient BYOND versions.
 
 The files available are: `XXX.YYYY_byond.exe`, `XXX.YYYY_byond.zip`, `XXX.YYYY_byond_linux.zip`.
+
+`XXX` and `YYYY` being the major and build versions, respectively. For example, `515.1647_byond.exe`
 
 `YYYY` can also be `latest` for the highest minor version of the major. For example, `515.latest_byond.exe`.
 
@@ -43,32 +44,31 @@ This follows the same format as BYOND does.
 ## Disclaimer & Warranty
 
 * This README describes the supported offerings of the service.
-* This repository may be force-pushed and squashed to a single commit at any time.
-  * One reason for this to possibly occur is if GitHub requests we decrease our repository size.
+* This repository may be force-pushed to and/or squashed at any time.
 * A minimum of one month of notice will be given for any breaking changes.
-  * Yes, this includes removing the n-3 BYOND version.
+  * This includes removing any prior BYOND version.
   * Notices will be given in the following:
     * [coderbus's](https://discord.gg/Vh8TJp9) `#tooling-questions` discord channel.
     * A GitHub Discussion post in the Announcements category.
     * The root index.html page.
 * It's common for BYOND versions to be completely broken. This mirror does not differentiate between broken versions in any way.
 * Some BYOND versions lack linux releases, as they're client-only. These can be identified by the lack of the `byond_linux.zip`.
-* I reserve the right to deal with active malicious abuse of the mirror as I see fit.
+* I reserve the right to deal with malicious abuse of the mirror as I see fit.
 * All these policies can change at any time, please contact `ZeWaka` on Discord if you seek changes.
  
 For additional warranty and disclaimer information, please see the [LICENSE](./LICENSE).
 
 ## License & Attribution
 
-This repository only provides a mirror of officially released BYOND software.
+This project only provides a mirror of officially released software.
 
-This mirror is not affiliated with nor endorsed by BYOND.
+This mirror is not affiliated with nor endorsed by [BYOND Software](https://www.byond.com/).
 
-All `.zip` and `.exe` files in this repository are the property of [BYOND Software](https://www.byond.com/).
+All `.zip` and `.exe` files served by this project are the property of [BYOND Software](https://www.byond.com/).
 
 All rights to these files belong to their respective owners.
 
-All other files are [licensed under](./LICENSE) the MIT license.
+All other project files are [licensed under the MIT license.](./LICENSE) 
 
 ---
 
