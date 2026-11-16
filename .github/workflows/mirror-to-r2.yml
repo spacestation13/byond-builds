@@ -2,7 +2,7 @@ name: Mirror BYOND To R2
 
 on:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */2 * * *"
   workflow_dispatch:
 
 concurrency:
